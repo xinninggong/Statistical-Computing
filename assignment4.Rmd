@@ -45,6 +45,7 @@ It is difficult to interpret the residual plots as we have a small number of dat
 The cooks distance plot shows that there are 3 points of undue influence as these observations have a cook's distance of over 0.4. Observation 14 in particular has an extremely high cook's distance which suggests that there may be problems with the model. 
 
 The residuals vs Fitted values plot show evidence of non-linearity. 
+
 ### c) 
 ```{r}
 1 - pchisq(deviance(mice.fit), df.residual(mice.fit))
@@ -119,7 +120,7 @@ exp(coef(mice.fit2))
 A plot of the estimated probability of convulsions for each method over the range of values for dose. This plot shows that for most of the range of dose, the probability of convulsions is between .1 and .2 smaller for the new method compared to the standard method.
 
 ## Question 2 Fitness
-One indicator of the aerobic fitness of a person is their oxygen consumption measured as milliliters of oxygen consumed per kilogram of body weight per minute.  Measurements of oxygen consumption and of six possible explanatory variables were taken for31 individuals. The goal was to determine whether it was possible to predict oxygen consumption using the other variables.
+One indicator of the aerobic fitness of a person is their oxygen consumption measured as milliliters of oxygen consumed per kilogram of body weight per minute.  Measurements of oxygen consumption and of six possible explanatory variables were taken for 31 individuals. The goal was to determine whether it was possible to predict oxygen consumption using the other variables.
 
 ### a) 
 ```{r}
