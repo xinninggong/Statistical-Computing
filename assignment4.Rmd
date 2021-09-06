@@ -1,0 +1,209 @@
+---
+title: "Stats 330 Assignment 4"
+author: "Xinning Gong 865308655"
+date: "23/05/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(s20x)
+library(tidyverse)
+```
+
+## Question 1 
+The data for this question comes from a study that investigated the effect of insulin on laboratory mice. The response was whether or not the mice had convulsions when given insulin. We are interested in modelling how the proportion of mice with convulsions differs for a new preparation method compared to the standard method.
+
+### a) Data frame 
+```{r}
+method <- c("Standard Method", "Standard Method", "Standard Method", "Standard Method", "Standard Method", "Standard Method", "Standard Method", "Standard Method", "Standard Method", "New Method", "New Method", "New Method", "New Method", "New Method")
+dose <- c(3.4, 5.2, 7.0, 8.5, 10.5, 13.0, 18.0, 21.0, 28.0, 6.5, 10.0, 14.0, 21.5, 29.0)
+
+convulsion <- c(0, 5, 11, 14, 18, 21, 23, 30, 27, 2, 10, 18, 21, 27)
+
+total <- c(33, 32, 38, 37, 40, 37, 31, 37, 30, 40, 30, 40, 35, 37)
+
+mice.df <- data.frame(method, dose, convulsion, total)
+mice.df$method <- as.factor(mice.df$method)
+mice.df
+```
+
+### b) Model fit 
+
+```{r}
+mice.fit <- glm(cbind(convulsion, total - convulsion) ~ dose + method, family = "binomial")
+plot(predict(mice.fit), residuals(mice.fit, type = "pearson"))
+plot(predict(mice.fit), residuals(mice.fit, type = "deviance"))
+cooks20x(mice.fit)
+plot(mice.fit, pch=19, which = 1)
+```
+
+It is difficult to interpret the residual plots as we have a small number of data. The Pearson and residuals appear to have more variation that we might expect under the model. If the model is appropriate, we expect the Pearson and deviance residuals to have an approximate Normal(0,1) distribution. This means that most of the residuals would lie between -2 and +2. This does not appear to be the case as two out of fourteen residuals seem to be outside of this range. Furthermore, it is possible that we may be dealing with sparse data. We can see that the expected value of the response is less than 5 for several mice. This indicates that there may be problems with the model. 
+
+The cooks distance plot shows that there are 3 points of undue influence as these observations have a cook's distance of over 0.4. Observation 14 in particular has an extremely high cook's distance which suggests that there may be problems with the model. 
+
+The residuals vs Fitted values plot show evidence of non-linearity. 
+### c) 
+```{r}
+1 - pchisq(deviance(mice.fit), df.residual(mice.fit))
+```
+
+The test indicates that we have strong evidence against the null hypothesis that our model is correct. It is questionable whether or not the assumption that $n_i$ > 5 is reasonable and therefore the deviance may not come from a chi-squared distribution with 11 degrees of freedom. 
+
+### d) 
+```{r}
+cfs <- coef(mice.fit)
+set.seed(123456)
+Dose = mice.df$dose
+Method = mice.df$method
+xbeta = cfs[1] + cfs[2] * Dose + cfs[3]
+n = mice.df$total
+n.obs = nrow(mice.df)
+Nsim = 1e4 
+devs <- numeric(Nsim)
+for (i in 1:Nsim) {
+  ysim = rbinom(n.obs, size = n, prob = exp(xbeta)/(1+exp(xbeta))) 
+  mod_i = glm(cbind(ysim, n-ysim)~Dose+ Method, family = "binomial") 
+  devs[i] = deviance(mod_i)
+}
+```
+
+### (i)
+```{r}
+hist(devs, freq = FALSE)
+lines(density(devs), col = "orange") 
+ds <- seq(min(devs), max(devs), length = 1e3) 
+lines(ds, dchisq(ds, df = df.residual(mice.fit)), col = "blue")
+```
+
+The plot shows that there is a difference between the bootstrap generated reference distribution and the chi-square reference distribution. The bootstrapped distribution is more towards the right. This suggests that there may be a problem and it may not be reasonable the deviance comes from a chi-squared distribution with 11 degrees of freedom.
+
+### (ii) 
+
+```{r}
+sum(devs > 27.098)/Nsim
+```
+
+The p-value for the goodness of fit test using the bootstrap generated reference distribution is slightly higher than the p-value obtained using the chi-square distribution. However, the p-value is still very small and provides evidence to reject the null hypothesis that the model is correct. Additionally it provides further evidence to our previous conclusions about the goodness of fit test. It shows that the deviance aren't well approximated by a $X^2_{df = 11}$ distribution and suggests that the assumption has not been met. 
+
+### (iii) 
+Nonparametric bootstrap should not be used to generate a reference distribution for a goodness of fit test because nonparametric bootstrap will resample after the original observations with replacement. This will not take into account the binomial model that we fitted as the nonparametric does not assume that the estimated model is the true model. The data should also be independent for nonparametric bootstrap and it does not seem like all of our data is independent. We also only have a small number of observations and the nonparametric bootstrap sample on average omits 37% of the data. We cannot be sure that it would produce a sampling distribution that is valid under the null hypothesis.
+
+### e) 
+```{r}
+mice.fit2 <-  glm(cbind(convulsion, total - convulsion) ~ log(dose) + method, family = "binomial")
+summary(mice.fit2)
+1-pchisq(8.79,11)
+par(mfrow=c(2,2))
+plot(mice.fit2,pch=19,col=rgb(0,0,1,.4))
+ par(mfrow=c(1,2))
+plot(mice.fit2,pch=19,col=rgb(0,0,1,.4), which=c(1,4))
+```
+
+The log dose model seems a much better fit to the data. The residual deviance is much smaller (8.8 compared to 27.1), there is now no evidence of lack-of-fit (p-value is .64) and the value of AIC is much smaller (62.6 compared to 81). Also the diagnostic plots look better: improved with respect to linearity and there are no points with high values of Cook’s distance.
+
+### f) 
+```{r}
+mice.df %>% 
+  mutate(p = predict(mice.fit2, type = "response")) %>% 
+  ggplot(aes(x = dose, y = p)) + 
+  geom_line(aes(color = method)) + 
+  labs(y = "probability of convulsion")
+
+exp(coef(mice.fit2))
+```
+
+
+A plot of the estimated probability of convulsions for each method over the range of values for dose. This plot shows that for most of the range of dose, the probability of convulsions is between .1 and .2 smaller for the new method compared to the standard method.
+
+## Question 2 
+
+### a) 
+```{r}
+fitness.df <- read_table("fitness.data")
+fitness.df <- fitness.df %>% 
+  separate(`run  rest.p`, into = c("run", "rest.p"), sep = "  ") %>%
+  mutate(run = as.numeric(run), 
+         rest.p = as.integer(rest.p),
+         age = as.integer(age),
+         run.p = as.integer(run.p), 
+         max.p = as.integer(max.p))
+
+fitness.df <- data.frame(fitness.df)
+str(fitness.df)
+
+summary(fitness.df)
+```
+
+### b) 
+```{r}
+diag(solve(cor(fitness.df[,-1])))
+```
+
+All of the variance inflation factors are below 5 except those for run.p and max.p which are both approximately 8. Thus the only circumstance where multicolinearity may be an issue is if both run.p and max.p are included in the model.
+
+### c) 
+```{r}
+fitness.fit <- lm(oxy ~ age + wt + run + rest.p + run.p + max.p, data = fitness.df)
+plot(fitness.fit)
+summary(fitness.fit)
+cooks20x(fitness.fit)
+```
+
+The residuals vs fitted values plot shows a slight pattern but otherwise appears fairly normal. This shows that there is no indication of non-linearity. The Q-Q plot shows that there may be a few outliers. The positive trend in the scale location plot indicates there may be non-constant variance. The cook's distance plot suggests there are no influential points. 
+
+### d) 
+
+```{r}
+library(MuMIn)
+options(na.action = "na.fail") 
+all.fits <- dredge(fitness.fit)
+all.fits2 <- dredge(fitness.fit, rank = "BIC")
+head(all.fits)
+head(all.fits2)
+```
+
+I used dredge() for AICc and BIC as the selection criteria. Both had the same top 6 models although the order was slightly different. Therefore, I will use the 6 models above as the promising models. 
+
+
+### e) 
+```{r}
+library(crossval)
+predfun.lm <- function(train.x, train.y, test.x, test.y) {
+lm1.fit <- lm(train.y ~ age + max.p + run + run.p, data = train.x)
+  ynew <- predict(lm1.fit, test.x) 
+  out1 <- mean((ynew - test.y)^2)
+
+
+lm2.fit <- lm(train.y ~ age + max.p + run + run.p + wt, data = train.x)
+  ynew <- predict(lm2.fit, test.x) 
+  out2 <- mean((ynew - test.y)^2)
+  
+lm3.fit <- lm(train.y ~ age + run + run.p, data = train.x)
+  ynew <- predict(lm3.fit, test.x) 
+  out3 <- mean((ynew - test.y)^2)
+  
+lm4.fit <- lm(train.y ~ max.p + run + run.p, data = train.x)
+  ynew <- predict(lm4.fit, test.x) 
+  out4 <- mean((ynew - test.y)^2)
+  
+lm5.fit <- lm(train.y~ age + max.p + rest.p + run + run.p, data = train.x)
+  ynew <- predict(lm5.fit, test.x) 
+  out5 <- mean((ynew - test.y)^2)
+
+lm6.fit <- lm(train.y ~ age + run + run.p + wt, data = train.x)
+  ynew <- predict(lm6.fit, test.x) 
+  out6 <- mean((ynew - test.y)^2)
+  
+c(out1, out2, out3, out4, out5, out6)
+}
+
+cv.out = crossval(predfun.lm, X = fitness.df[, 2:7],Y = fitness.df[, 1], K = 10, B = 100, verbose = FALSE)
+round(cv.out$stat, 2)
+
+
+```
+
+The model with the lowest estimated MSPE is model 60 which has age, max.p, run, run.p and weight as explanatory variables. 
