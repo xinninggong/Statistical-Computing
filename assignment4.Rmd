@@ -3,8 +3,8 @@ title: "Stats 330 Assignment 4"
 author: "Xinning Gong 865308655"
 date: "23/05/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +13,7 @@ library(s20x)
 library(tidyverse)
 ```
 
-## Question 1 
+## Question 1 Mice 
 The data for this question comes from a study that investigated the effect of insulin on laboratory mice. The response was whether or not the mice had convulsions when given insulin. We are interested in modelling how the proportion of mice with convulsions differs for a new preparation method compared to the standard method.
 
 ### a) Data frame 
@@ -118,7 +118,8 @@ exp(coef(mice.fit2))
 
 A plot of the estimated probability of convulsions for each method over the range of values for dose. This plot shows that for most of the range of dose, the probability of convulsions is between .1 and .2 smaller for the new method compared to the standard method.
 
-## Question 2 
+## Question 2 Fitness
+One indicator of the aerobic fitness of a person is their oxygen consumption measured as milliliters of oxygen consumed per kilogram of body weight per minute.  Measurements of oxygen consumption and of six possible explanatory variables were taken for31 individuals. The goal was to determine whether it was possible to predict oxygen consumption using the other variables.
 
 ### a) 
 ```{r}
